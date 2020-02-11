@@ -313,79 +313,116 @@
               "ci_end": 0.003
             }
           ]
-        }
-
-        var Observable = function () { // Allow UI elements to monitor changes in a variable
-          // Very simplified observable: a() to get value, a(val) to set, a.subscribe(fn) to add handlers
-          var _subscribers = [];
-          var current_value;
-          var handle_value = function (value) {
-            if (value === undefined) {
-              return current_value;
-            }
-            if (current_value !== value) {
-              current_value = value;
-              _subscribers.forEach(function (handler) {
-                try {
-                  handler(value);
-                } catch (error) {
-                  console.error(error);
-                }
-              });
-            }
-          };
-          handle_value.subscribe = function (handler) {
-            _subscribers.push(handler);
-          };
-          return handle_value;
         };
 
         /* Utility Functions – basic combinators that reduce LocusZoom state against a type of layer data (including all layer data) */
         // not quite the same as defining SKI-combinators that are domain-specific but in the long run that's the idea
         // What makes them domain specific is that they include all of the LZ state options in their args
-        var lzDataIdentity = data => (state, chain, fields) => {
-          console.log("evaluating with", state, chain, fields);
+        var lzDataIdentity = data => () => {
+          console.log("identity");
           return data;
         };
-        var lzDataTerminateArray = data => (state, chain, fields) => () => { return []; }
+        var lzDataTerminateArray = data => () => {
+          console.log("terminate");
+          return [];
+        };
+        var lzDataSetter = () => newData => {
+          console.log("settable");
+          return newData;
+        }
 
         // HOF/type wrapper
         LocusZoom.Data.TLazy = (reduceFunc) => (initData) => {
+          // dTODO: block-level memoization on reducer call?
+          // DONE: only possible with recursion if I want to make subsequent reductions
+
+          var current_value = initData;
           var handle_value = (args) => {
-            console.group("handling lazy value call");
             if (typeof args !== "undefined") {  // i.e. if passed args do not have arity 0
-              console.log("args are defined");
               // are these the args we're looking for
-              const { state, chain, fields } = args;
-              console.log("we have the following lz state in "+JSON.stringify(args)+":", state, chain, fields);
-              if  (state && chain && fields) {
-                return reduceFunc(initData)(state, chain, fields);
-              } else {
-                // TODO: uh the args we gave the object of type TLazy were bunk. Just fail nicely?
-                return initData;
-              }
+              current_value = reduceFunc(initData)(args);
+              return LocusZoom.Data.TLazy(reduceFunc)(current_value);
             } else {
-              return initData;
+              return current_value;
             }
-            console.groupEnd();
           }; // only return on evaluation
           return handle_value;
+
         };
 
         // Simplest implementation: the identity selector returns all of the data regardless of state
 
         console.group("Initialize Lazy Constructions");
 
-        ALazyIdentity = LocusZoom.Data.TLazy(lzDataIdentity);
-        console.log("ALazyIdentity", ALazyIdentity);
+        console.group('Lazy Identity');
 
-        ILazyIdentityPhewas = ALazyIdentity(phewas_forest);  // take phewas data as already loaded
-        console.log("Give an ALazyIdentity a Phewas: ILazyIdentityPhewas", ILazyIdentityPhewas);
+          ALazyIdentity = LocusZoom.Data.TLazy(lzDataIdentity);
+          console.log("ALazyIdentity", ALazyIdentity);
 
-        console.group("Test ILazyIdentityPhewas");
+          ILazyIdentityPhewas = ALazyIdentity(phewas_forest);  // take phewas data as already loaded
+          console.log("Give an ALazyIdentity a Phewas: ILazyIdentityPhewas", ILazyIdentityPhewas);
 
-        getPhewasFromLazy = ILazyIdentityPhewas();
-        console.log("result", getPhewasFromLazy);
+          console.group("Test ILazyIdentityPhewas", ILazyIdentityPhewas);
+
+          getPhewasFromLazy1 = ILazyIdentityPhewas();  // equal to init data
+          console.log("result data", getPhewasFromLazy1);
+
+          getPhewasFromLazy2 = ILazyIdentityPhewas({})();  // should still be the same as the call above, but we'll get it through the identity reducer's execution stack
+          console.log("result data from reduction", getPhewasFromLazy2);
+
+          console.groupEnd();
+
+        console.groupEnd();
+
+        console.group('Lazy Termination');
+
+          ALazyTermination = LocusZoom.Data.TLazy(lzDataTerminateArray);
+          console.log("ALazyTermination", ALazyTermination);
+
+          ILazyTerminationPhewas = ALazyTermination(phewas_forest);
+          console.log("Give an ALazyTermination a Phewas: ILazyTerminationPhewas", ILazyTerminationPhewas);
+
+          console.group('Test ILazyTerminationPhewas');
+          getPhewasFromLazyTerm1 = ILazyTerminationPhewas();  // equal to init data
+          console.log("result data", getPhewasFromLazyTerm1);
+
+          getPhewasFromLazyTerm2 = ILazyTerminationPhewas({})();  // should still be the same as the call above, but we'll get it through the identity reducer's execution stack
+          console.log("result data from reduction", getPhewasFromLazyTerm2);  // should be empty
+
+          reduceDataTwice = ILazyTerminationPhewas({})({});  // observations "collapse" the object, which means if we want to do consecutive observations we need to store the instance of the object before observation
+          observeTwiceData = reduceDataTwice();
+          console.log("result data from twice reduction", observeTwiceData);  // should be empty array
+
+          reduceDataThrice = reduceDataTwice({});  // 'reduceDataTwice({})' writes out as 'ILazyTerminationPhewas({})({})({})'
+          observeThriceReduced = reduceDataThrice();
+          console.log("result data from twice reduction", observeThriceReduced);  // should be empty array
+          console.groupEnd();
+
+        console.groupEnd();
+
+        console.group('Test ILazySettablePhewas');
+
+        ALazySettable = LocusZoom.Data.TLazy(lzDataSetter);
+        console.log("ALazySettable", ALazySettable);
+
+        ILazySettablePhewas = ALazySettable(phewas_forest);
+        console.log("Give an ALazyTermination a Phewas: ILazyTerminationPhewas", ILazySettablePhewas);
+
+        console.group('Lazy Setting');
+        getPhewasFromLazySettable1 = ILazySettablePhewas();  // equal to init data
+        console.log("result data", getPhewasFromLazySettable1);
+
+        getPhewasFromLazySettable1 = ILazySettablePhewas({})();  // should still be the same as the call above, but we'll get it through the identity reducer's execution stack
+        console.log("result data from reduction", getPhewasFromLazySettable1);  // should be `{}`
+
+        reduceDataTwice = ILazySettablePhewas(1)(2);  // observations "collapse" the object, which means if we want to do consecutive observations we need to store the instance of the object before observation
+        observeTwiceData = reduceDataTwice();
+        console.log("result data from twice reduction", observeTwiceData);  // should be `2`
+
+        reduceDataThrice = reduceDataTwice(3);  // 'reduceDataTwice(3)' writes out as 'ILazyTerminationPhewas(1)(2)(3)'
+        observeThriceReduced = reduceDataThrice();
+        console.log("result data from twice reduction", observeThriceReduced);  // should be `3`
+        console.groupEnd();
 
         console.groupEnd();
 
@@ -395,8 +432,8 @@
           this._lazyData = ILazy;
         },'LazyJSON');
         LocusZoom.Data.LazySource.prototype.getRequest = function(state, chain, fields) {
-          console.log(state, chain, fields);
-          return Promise.resolve(this._lazyData(state, chain, fields));
+          this._lazyData = this._lazyData(state, chain, fields);
+          return Promise.resolve(this._lazyData());
         };
         LocusZoom.Data.LazySource.prototype.toJSON = function() {
           // we get the current data by calling a TLazyData with no args (sort of like an observable)
