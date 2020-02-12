@@ -8,7 +8,7 @@
 
     <!-- Necessary includes for LocusZoom.js -->
     <script src="../dist/locuszoom.vendor.min.js" type="text/javascript"></script>
-    <script src="../dist/locuszoom.app.min.js" type="text/javascript"></script>
+    <script src="../dist/locuszoom.app.js" type="text/javascript"></script>
     <link rel="stylesheet" href="../dist/locuszoom.css" type="text/css"/>
 
     <title>LocusZoom.js ~ PheWAS (Forest) Example</title>
@@ -319,39 +319,63 @@
         /* Utility Functions – basic combinators that reduce LocusZoom state against a type of layer data (including all layer data) */
         // not quite the same as defining SKI-combinators that are domain-specific but in the long run that's the idea
         // What makes them domain specific is that they include all of the LZ state options in their args
-        var lzDataIdentity = data => (args) => {
-          console.log("identity", args);
-          return data;
+        var lzDataIdentity = sourceState => lzState => {
+          console.log("identity", lzState);
+          return sourceState;
         };
-        var lzDataTerminateArray = data => (args) => {
-          console.log("terminate", args);
+        var lzDataTerminateArray = sourceState => lzState => {
+          console.log("terminate", lzState);
           return [];
         };
-        var lzDataSetter = () => newData => {
+        var lzDataSetter = () => newSourceState => {
           console.log("settable");
-          return newData;
+          return newSourceState;
         }
-        var lzPhewasFilter = data => (args) => {
-          console.log("random", data, args);
-          return data.filter(phewas_point => phewas_point["log_pvalue"] > Math.random() * 5);
+        var lzPhewasFilter = sourceState => lzState => {
+          console.log("random", sourceState, lzState);
+          return {
+              ...sourceState,
+              data: sourceState.data.filter(phewas_point => phewas_point["log_pvalue"] > Math.random() * 5)
+            }
         }
+
+        var HlzLazyPromise = promise => sourceState => lzState => {
+            // we provide a promise on sourceState because after the initial data is used in this reducer,
+            // all subsequent states are promised states (regardless of what the initial data was).
+
+            // luckily by handling all of the reductions through this function, we'll still see the sequence of data we need
+            // without having to introduce any async to any other class, or changing our approach to using our synchronous reducers.
+
+            return Promise.resolve(sourceState).then(sourceState => promise(sourceState, lzState));  // note that we can always ignore the second arg in the promise if necessary
+        };
+
+        // a timeout promise with a randomized delay that changes each call
+        // simulates e.g. varying network conditions, arbitrarily changeable context data
+        var wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        var fail = error => console.error(`Browser feature failed? God help you. You got this error: ${error}`);
+        var lzTimeoutPromise = state =>
+            wait(state.ctx*1000).then(() => {
+                console.log(state);
+                console.log(`${state.ctx} second delay`);
+                return { ...state, ctx: Math.random() * 3 };
+            }).catch(fail);
+
+        var lzRandomTimeout = HlzLazyPromise(lzTimeoutPromise);
 
         // HOF/type wrapper
-        LocusZoom.Data.TLazy = (reduceFunc) => (initData) => {
-          // dTODO: block-level memoization on reducer call?
-          // DONE: only possible with recursion if I want to make subsequent reductions
+        LocusZoom.Data.TLazy = (reduceFunc) => (initState) => {
+          var current_state = initState;
 
-          var current_value = initData;
-          var handle_value = (args) => {
-            if (typeof args !== "undefined") {  // i.e. if passed args do not have arity 0
-              // are these the args we're looking for
-              current_value = reduceFunc(initData)(args);
-              return LocusZoom.Data.TLazy(reduceFunc)(current_value);
+          var handle_state = (args) => {
+            if (typeof args !== "undefined") {
+              current_state = (reduceFunc(current_state)(args));
+              return LocusZoom.Data.TLazy(reduceFunc)(current_state);
             } else {
-              return current_value;
+              return current_state;
             }
           }; // only return on evaluation
-          return handle_value;
+
+          return handle_state;
 
         };
 
@@ -384,7 +408,7 @@
           ALazyTermination = LocusZoom.Data.TLazy(lzDataTerminateArray);
           console.log("ALazyTermination", ALazyTermination);
 
-          ILazyTerminationPhewas = ALazyTermination(phewas_forest.data);
+          ILazyTerminationPhewas = ALazyTermination(phewas_forest);
           console.log("Give an ALazyTermination a Phewas: ILazyTerminationPhewas", ILazyTerminationPhewas);
 
           console.group('Test ILazyTerminationPhewas');
@@ -431,24 +455,34 @@
 
         console.groupEnd();
 
+        console.group('Test LazyTimeout');
+        console.info('This forms the basis for prototyping the injection of promises');
+
+        ALazyTimeout = LocusZoom.Data.TLazy(lzRandomTimeout);
+        ILazyTimeoutPhewas = ALazyTimeout({...phewas_forest, ctx: 1});
+        console.log("first observation", ILazyTimeoutPhewas());
+        console.log("first reduction", ILazyTimeoutPhewas({}));
+        console.log("second observation", ILazyTimeoutPhewas());
+
+        console.groupEnd();
+
         console.groupEnd();
 
         ALazyRandomFilterPhewas = LocusZoom.Data.TLazy(lzPhewasFilter);
-        ILazyRandomFilterPhewas = ALazyRandomFilterPhewas(phewas_forest.data);
+        ILazyRandomFilterPhewas = ALazyRandomFilterPhewas(phewas_forest);
 
         LocusZoom.Data.LazySource = LocusZoom.Data.Source.extend(function(ILazy) {
           this._lazyData = ILazy;
         },'LazyJSON');
         LocusZoom.Data.LazySource.prototype.getRequest = function(state, chain, fields) {
-          this._lazyData = this._lazyData({state, chain, fields});
-          return Promise.resolve(this._lazyData());
+            this._lazyData = this._lazyData({state, chain, fields})
+            return Promise.resolve(this._lazyData());
         };
         LocusZoom.Data.LazySource.prototype.toJSON = function() {
-          // we get the current data by calling a TLazyData with no args (sort of like an observable)
           return [Object.getPrototypeOf(this).constructor.SOURCE_NAME, this._lazyData()];
         };
         var data_sources = new LocusZoom.DataSources()
-          .add("phewas", ["LazyJSON", ILazyRandomFilterPhewas]);
+          .add("phewas", ["LazyJSON", ILazyTimeoutPhewas]);
 
         // Define a reusable layout, and then retrieve it so that the namespaces get filled in
         LocusZoom.Layouts.add("plot", "phewas_forest", {
