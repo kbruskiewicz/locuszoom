@@ -1,1 +1,1 @@
-"export default '${npm_package_version}';" 
+export default '0.13.0-beta.2';

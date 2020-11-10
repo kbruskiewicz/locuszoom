@@ -931,7 +931,6 @@ class Plot {
      * @private
      */
     positionPanels() {
-
         let id;
 
         // We want to enforce that all x-linked panels have consistent horizontal margins
