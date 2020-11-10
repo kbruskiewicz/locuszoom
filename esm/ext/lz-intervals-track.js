@@ -494,19 +494,18 @@ function install (LocusZoom) {
                 this.parent.layout.margin.bottom = 5 + (this.layout.split_tracks ? 0 : this.parent.legend.layout.height + 5);
             }
             
-            
+            this.render();            
+            this.updateSplitTrackAxis();
+
             if (!this.layout.split_tracks) {
                 // Allow the plot to shrink when panels are removed, by forcing it to recalculate min dimensions from scratch
-                this.parent.min_height = 1;
-                this.parent.min_width = 1;                
-                // // An extra call to setDimensions with existing discrete dimensions fixes some rounding errors with tooltip
-                // // positioning. TODO: make this additional call unnecessary.
-                // this.setDimensions(this.parent.width, this.parent.height);
+                this.parent_plot.layout.min_height = 1;
+                this.parent_plot.layout.min_width = 1;
+                this.parent_plot.positionPanels();
+                this.parent_plot.setDimensions(this.parent_plot.layout.width, this.parent_plot.layout.height);
             }
-            
-            this.render();
-
-            this.updateSplitTrackAxis();
+            console.log(this)
+            console.log(this.parent_plot.layout.width, this.parent_plot.layout.height)
 
             return this;
         }
