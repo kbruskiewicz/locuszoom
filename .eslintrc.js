@@ -17,9 +17,9 @@ module.exports = {
             },
         ],
         'keyword-spacing': 'warn',
-        'linebreak-style': ['error', 'unix'],
+        // 'linebreak-style': ['error', 'unix'],
         'no-console': 'off',
-        'no-trailing-spaces': 'error',
+        // 'no-trailing-spaces': 'error',
         'no-unused-vars': [
             'error',
             { 'args': 'none', 'varsIgnorePattern': '^_+$' },
@@ -33,10 +33,10 @@ module.exports = {
                 'allowTemplateLiterals': true,
             },
         ],
-        'semi': [
-            'error',
-            'always',
-        ],
+        // 'semi': [
+        //     'error',
+        //     'always',
+        // ],
         'space-before-blocks': 'error',
         'space-infix-ops': 'error',
     },

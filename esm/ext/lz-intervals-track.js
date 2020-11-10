@@ -486,14 +486,30 @@ function install (LocusZoom) {
         // Method to not only toggle the split tracks boolean but also update
         // necessary display values to animate a complete merge/split
         toggleSplitTracks() {
+
+
             this.layout.split_tracks = !this.layout.split_tracks;
+
             if (this.parent.legend && !this.layout.always_hide_legend) {
                 this.parent.layout.margin.bottom = 5 + (this.layout.split_tracks ? 0 : this.parent.legend.layout.height + 5);
             }
+            
             this.render();
+
+            if (!this.layout.split_tracks) {
+                // Allow the plot to shrink when panels are removed, by forcing it to recalculate min dimensions from scratch
+                this.layout.min_height = this._base_layout.min_height;
+                this.layout.min_width = this._base_layout.min_width;                
+                // An extra call to setDimensions with existing discrete dimensions fixes some rounding errors with tooltip
+                // positioning. TODO: make this additional call unnecessary.
+                this.setDimensions(this.layout.width, this.layout.height);
+            }
             this.updateSplitTrackAxis();
+
             return this;
         }
+
+
 
         // Choose an appropriate color scheme based on the number of items in the track, and whether or not we are
         //  using explicitly provided itemRgb information
