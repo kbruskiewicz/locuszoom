@@ -504,7 +504,7 @@ function install (LocusZoom) {
                 this.parent_plot.layout.min_height = this.parent_plot._base_layout.min_height;
                 this.parent_plot.layout.min_width = this.parent_plot._base_layout.min_width;
                 console.log(this.parent_plot.layout, this.parent_plot._base_layout)
-                this.parent_plot.setDimensions(this.parent_plot.layout.min_width, this.parent_plot.layout.min_height)
+                this.parent_plot.positionPanels();
             }
 
 
