@@ -57,13 +57,18 @@ function install (LocusZoom) {
                     .setTitle('Toggle whether tracks are split apart or merged together')
                     .setOnclick(() => {
                         data_layer.toggleSplitTracks();
+
+
                         if (this.scale_timeout) {
                             clearTimeout(this.scale_timeout);
                         }
                         this.scale_timeout = setTimeout(() => {
-                            this.parent_panel.scaleHeightToData();
+                            // NOTE: This can override changes made in toggleSplitTracks
+                            this.parent_panel.scaleHeightToData(); // DEFECT
                             this.parent_plot.positionPanels();
                         }, 0);
+
+
                         this.update();
                     });
                 return this.update();
@@ -436,7 +441,7 @@ function install (LocusZoom) {
                 const track_height = +this.layout.track_height || 0;
                 const track_spacing = 2 * (+this.layout.bounding_box_padding || 0) + (+this.layout.track_vertical_spacing || 0);
                 const target_height = (tracks * track_height) + ((tracks - 1) * track_spacing);
-                this.parent.scaleHeightToData(target_height);
+                this.parent.scaleHeightToData(target_height); // DEFECT
                 if (legend_axis && this.parent.legend) {
                     this.parent.legend.hide();
                     this.parent.layout.axes[legend_axis] = {
@@ -495,17 +500,18 @@ function install (LocusZoom) {
             }
 
             this.render();     
-            this.updateSplitTrackAxis();
 
             if (!this.layout.split_tracks) {
-                // console.log(this)
-                // console.log(this.parent_plot.layout.width, this.parent_plot.layout.height)
-            
-                this.parent_plot.layout.min_height = this.parent_plot._base_layout.min_height;
-                this.parent_plot.layout.min_width = this.parent_plot._base_layout.min_width;
-                console.log(this.parent_plot.layout, this.parent_plot._base_layout)
-                this.parent_plot.positionPanels();
+                // forcing these to go to one will cause a recalculation of the dimensions for the parent_plot
+                // otherwise when `scaleHeightToData` runs, min_height (which can get quite large) will dominate plot's
+                // layout from updating and can potentially lead to a large amount of whitespace on the screen, as well as stretching panels.
+                this.parent_plot.layout.min_height = 1;
+                this.parent_plot.layout.min_width = 1;
+                // this.parent_plot.layout.min_height = this.parent_plot._base_layout.min_height;
+                // this.parent_plot.layout.min_width = this.parent_plot._base_layout.min_width;
             }
+
+            this.updateSplitTrackAxis();
 
 
 
