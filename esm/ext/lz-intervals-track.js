@@ -399,17 +399,17 @@ function install (LocusZoom) {
                         .remove();
                 });
 
-            // Remove old elements as needed
+            // // Remove old elements as needed
             selection.exit()
                 .remove();
 
-            // Update the legend axis if the number of ticks changed
-            if (this.previous_tracks !== this.tracks) {
-                this.updateSplitTrackAxis();
-            }
+            // // Update the legend axis if the number of ticks changed
+            // if (this.previous_tracks !== this.tracks) {
+            //     this.updateSplitTrackAxis();
+            // }
 
-            // The intervals track allows legends to be dynamically generated, in which case space can only be
-            //  allocated after the panel has been rendered.
+            // // The intervals track allows legends to be dynamically generated, in which case space can only be
+            // //  allocated after the panel has been rendered.
             if (this.parent && this.parent.legend) {
                 this.parent.legend.render();
             }
@@ -493,19 +493,21 @@ function install (LocusZoom) {
             if (this.parent.legend && !this.layout.always_hide_legend) {
                 this.parent.layout.margin.bottom = 5 + (this.layout.split_tracks ? 0 : this.parent.legend.layout.height + 5);
             }
-            
-            this.render();            
+
+            this.render();     
             this.updateSplitTrackAxis();
 
             if (!this.layout.split_tracks) {
-                // Allow the plot to shrink when panels are removed, by forcing it to recalculate min dimensions from scratch
-                this.parent_plot.layout.min_height = 1;
-                this.parent_plot.layout.min_width = 1;
-                this.parent_plot.positionPanels();
-                this.parent_plot.setDimensions(this.parent_plot.layout.width, this.parent_plot.layout.height);
+                // console.log(this)
+                // console.log(this.parent_plot.layout.width, this.parent_plot.layout.height)
+            
+                this.parent_plot.layout.min_height = this.parent_plot._base_layout.min_height;
+                this.parent_plot.layout.min_width = this.parent_plot._base_layout.min_width;
+                console.log(this.parent_plot.layout, this.parent_plot._base_layout)
+                this.parent_plot.setDimensions(this.parent_plot.layout.min_width, this.parent_plot.layout.min_height)
             }
-            console.log(this)
-            console.log(this.parent_plot.layout.width, this.parent_plot.layout.height)
+
+
 
             return this;
         }
