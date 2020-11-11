@@ -898,8 +898,8 @@ class Plot {
                 this.layout.width = Math.max(this.panels[id].layout.width, this.layout.width);
                 this.layout.height += this.panels[id].layout.height;
             }
-            this.layout.width = Math.max(this.layout.width, this.layout.min_width);
-            this.layout.height = Math.max(this.layout.height, this.layout.min_height);
+            // this.layout.width = Math.max(this.layout.width, this.layout.min_width);
+            // this.layout.height = Math.max(this.layout.height, this.layout.min_height);
         }
 
         // Apply layout width and height as discrete values or viewbox values
