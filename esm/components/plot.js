@@ -1144,7 +1144,7 @@ class Plot {
                     return this;
                 }
                 this.showing = false;
-                // Remove panel boundaries
+                // Panel panel boundaries
                 this.selectors.forEach((selector) => {
                     selector.remove();
                 });

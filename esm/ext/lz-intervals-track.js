@@ -505,9 +505,13 @@ function install (LocusZoom) {
                 // forcing these to go to one will cause a recalculation of the dimensions for the parent_plot
                 // otherwise when `scaleHeightToData` runs, min_height (which can get quite large) will dominate plot's
                 // layout from updating and can potentially lead to a large amount of whitespace on the screen, as well as stretching panels.
-                this.parent_plot.layout.height = this.parent_plot._base_layout.height;
+                this.parent_plot.layout.height = 1;
                 this.parent_plot.layout.min_height = 1;
                 this.parent_plot.layout.min_width = 1;
+
+                // recalculate proportional heights and widths
+                this.parent_plot.positionPanels();
+
                 // this.parent_plot.layout.min_height = this.parent_plot._base_layout.min_height;
                 // this.parent_plot.layout.min_width = this.parent_plot._base_layout.min_width;
             }
